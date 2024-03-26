@@ -201,6 +201,14 @@ def parse_tag_file(doc: ET.ElementTree) -> Dict[str, Union[Entry, FunctionList]]
             compound_filename = compound_filename + '.html'
 
         # If it's a compound we can simply add it
+        # if compound_name in mapping:
+        #     print("$$$$$$$$$$$$$$$$$Duplicate$$$$$$$$$")
+    
+        # if compound_name == "PE::Predict":
+        #     print("$$$$$$$$$$$$$$$$$AddToMapping$$$$$$$$$1")
+        #     print(f"compound_kind************1:{compound_kind}")
+        # else:
+        #     print(f"compound_kind************2:{compound_kind}")
         mapping[compound_name] = Entry(kind=compound_kind, file=compound_filename)
 
         for member in compound.findall('member'):
@@ -212,14 +220,21 @@ def parse_tag_file(doc: ET.ElementTree) -> Dict[str, Union[Entry, FunctionList]]
                 raise KeyError(f"Member of {compound_name} does not have a name")
             member_symbol = compound_name + '::' + member_name
             member_kind = member.get('kind')
-            arglist_text = member.findtext('./arglist')  # If it has an <arglist> then we assume it's a function. Empty <arglist> returns '', not None. Things like typedefs and enums can have empty arglists
+            arglist_text = member.findtext('./arglist')  # If it has an <arglist> then we assume it's a function. Empty <arglist> returns '', not None. Things like typedefs and enums can have empty arglists\
+            print(f"arglist_text:{arglist_text}")
+            print(f"arglist_text:{member_kind}")
 
             if member_kind == "friend": # ignore friend class definitions because it results in double class entries that will throw a RuntimeError (see below at the end of this function)
+                print(f"member_symbol FRIEND:{member_symbol}")
                 continue
             if arglist_text and member_kind not in {'variable', 'typedef', 'enumeration', "enumvalue"}:
                 function_list.append((member_symbol, arglist_text, member_kind, join(anchorfile, '#', member.findtext('anchor'))))
             else:
                 # Put the simple things directly into the mapping
+                # if member_symbol in mapping:
+                #     print("$$$$$$$$$$$$$$$$$Duplicate$$$$$$$$$")
+                # if member_symbol == "PE::Predict":
+                #     print("$$$$$$$$$$$$$$$$$AddToMapping$$$$$$$$$2")
                 mapping[member_symbol] = Entry(kind=member.get('kind'), file=join(anchorfile, '#', member.findtext('anchor')))
 
     for member_symbol, arglist, kind, anchor_link in function_list:
@@ -232,7 +247,12 @@ def parse_tag_file(doc: ET.ElementTree) -> Dict[str, Union[Entry, FunctionList]]
                 mapping[member_symbol] = FunctionList()
             member_mapping = mapping[member_symbol]
             if not isinstance(member_mapping, FunctionList):
-                raise RuntimeError(f"Cannot add override to non-function '{member_symbol}'")
+                # print(f"normalised_arglist:{normalised_arglist}")
+                # raise RuntimeError(f"Cannot add override to non-function '{member_symbol}'. Type:{type(member_mapping)}")
+                # print(f"***************{function_list}")
+                # print(f"*******kind:{kind}")
+                print(f"Cannot add override to non-function {member_symbol}. Type:{type(member_mapping)}. Skipping")
+                continue
             member_mapping.add_overload(normalised_arglist, anchor_link)
 
     return mapping
